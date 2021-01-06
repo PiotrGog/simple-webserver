@@ -1,5 +1,8 @@
 [workspace]
 
 members = [
-    "main"
+    "main",
+    "single-threaded-server"
 ]
+
+exclude = []

@@ -3,3 +3,10 @@
 [[package]]
 name = "main"
 version = "0.1.0"
+dependencies = [
+ "single-threaded-server",
+]
+
+[[package]]
+name = "single-threaded-server"
+version = "0.1.0"
