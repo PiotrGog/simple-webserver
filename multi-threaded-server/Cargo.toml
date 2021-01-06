@@ -1,5 +1,5 @@
 [package]
-name = "main"
+name = "multi-threaded-server"
 version = "0.1.0"
 authors = ["Piotr Gogola <gogola.piotr@interia.pl>"]
 edition = "2018"
@@ -7,5 +7,3 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-single-threaded-server = { path = "../single-threaded-server" }
-multi-threaded-server = { path = "../multi-threaded-server" }

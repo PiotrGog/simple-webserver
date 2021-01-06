@@ -4,8 +4,13 @@
 name = "main"
 version = "0.1.0"
 dependencies = [
+ "multi-threaded-server",
  "single-threaded-server",
 ]
+
+[[package]]
+name = "multi-threaded-server"
+version = "0.1.0"
 
 [[package]]
 name = "single-threaded-server"

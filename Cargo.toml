@@ -2,7 +2,8 @@
 
 members = [
     "main",
-    "single-threaded-server"
+    "single-threaded-server",
+    "multi-threaded-server",
 ]
 
 exclude = []
