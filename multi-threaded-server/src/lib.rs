@@ -54,7 +54,7 @@ impl MultiThreadServer {
 
 struct ThreadPool {
     workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    sender: mpsc::Sender<Message>,
 }
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
@@ -79,12 +79,16 @@ impl ThreadPool {
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(fun);
-        self.sender.send(job).unwrap();
+        self.sender.send(Message::Execute(job)).unwrap();
     }
 }
 
 impl Drop for ThreadPool {
     fn drop(&mut self) {
+        for _ in &self.workers {
+            self.sender.send(Message::Terminate).unwrap();
+        }
+
         for worker in &mut self.workers {
             if let Some(t) = worker.thread.take() {
                 println!("Shutting down worker with id {}", worker.id);
@@ -99,16 +103,25 @@ struct Worker {
     thread: Option<thread::JoinHandle<()>>,
 }
 
+enum Message {
+    Execute(Job),
+    Terminate,
+}
+
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         return Worker {
             id: id,
             thread: Some(thread::spawn(move || loop {
-                let job = receiver.lock().unwrap().recv().unwrap();
+                let message = receiver.lock().unwrap().recv().unwrap();
 
-                println!("Worker {} got a job; executing.", id);
-
-                job();
+                match message {
+                    Message::Execute(job) => {
+                        println!("Worker {} got a job; executing.", id);
+                        job();
+                    }
+                    Message::Terminate => break,
+                }
             })),
         };
     }
