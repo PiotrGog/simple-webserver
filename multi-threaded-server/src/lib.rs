@@ -2,6 +2,9 @@ use std::fs;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
+use std::sync::mpsc;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
@@ -13,12 +16,13 @@ impl MultiThreadServer {
     }
 
     pub fn start_listening(&self) {
+        let mut thread_pool = ThreadPool::new(4);
         let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
 
         for stream in listener.incoming() {
             let stream = stream.unwrap();
 
-            thread::spawn(|| {
+            thread_pool.execute(|| {
                 Self::handle_connection(stream);
             });
         }
@@ -45,5 +49,56 @@ impl MultiThreadServer {
 
         stream.write(response.as_bytes()).unwrap();
         stream.flush().unwrap();
+    }
+}
+
+struct ThreadPool {
+    workers: Vec<Worker>,
+    sender: mpsc::Sender<Job>,
+}
+
+type Job = Box<dyn FnOnce() + Send + 'static>;
+
+impl ThreadPool {
+    fn new(number_of_threads: usize) -> ThreadPool {
+        assert!(number_of_threads > 0);
+
+        let (sender, receiver) = mpsc::channel();
+        let receiver = Arc::new(Mutex::new(receiver));
+        let mut workers = Vec::with_capacity(number_of_threads);
+
+        for id in 0..number_of_threads {
+            workers.push(Worker::new(id, Arc::clone(&receiver)));
+        }
+
+        return ThreadPool { workers, sender };
+    }
+
+    fn execute<F>(&self, fun: F)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let job = Box::new(fun);
+        self.sender.send(job).unwrap();
+    }
+}
+
+struct Worker {
+    id: usize,
+    thread: thread::JoinHandle<()>,
+}
+
+impl Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+        return Worker {
+            id,
+            thread: thread::spawn(move || loop {
+                let job = receiver.lock().unwrap().recv().unwrap();
+
+                println!("Worker {} got a job; executing.", id);
+
+                job();
+            }),
+        };
     }
 }
