@@ -16,7 +16,7 @@ impl MultiThreadServer {
     }
 
     pub fn start_listening(&self) {
-        let mut thread_pool = ThreadPool::new(4);
+        let thread_pool = ThreadPool::new(4);
         let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
 
         for stream in listener.incoming() {
@@ -53,7 +53,7 @@ impl MultiThreadServer {
 }
 
 struct ThreadPool {
-    workers: Vec<Worker>,
+    _workers: Vec<Worker>,
     sender: mpsc::Sender<Job>,
 }
 
@@ -71,7 +71,10 @@ impl ThreadPool {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        return ThreadPool { workers, sender };
+        return ThreadPool {
+            _workers: workers,
+            sender,
+        };
     }
 
     fn execute<F>(&self, fun: F)
@@ -84,15 +87,15 @@ impl ThreadPool {
 }
 
 struct Worker {
-    id: usize,
-    thread: thread::JoinHandle<()>,
+    _id: usize,
+    _thread: thread::JoinHandle<()>,
 }
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
         return Worker {
-            id,
-            thread: thread::spawn(move || loop {
+            _id: id,
+            _thread: thread::spawn(move || loop {
                 let job = receiver.lock().unwrap().recv().unwrap();
 
                 println!("Worker {} got a job; executing.", id);
