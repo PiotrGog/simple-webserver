@@ -53,7 +53,7 @@ impl MultiThreadServer {
 }
 
 struct ThreadPool {
-    _workers: Vec<Worker>,
+    workers: Vec<Worker>,
     sender: mpsc::Sender<Job>,
 }
 
@@ -71,10 +71,7 @@ impl ThreadPool {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        return ThreadPool {
-            _workers: workers,
-            sender,
-        };
+        return ThreadPool { workers, sender };
     }
 
     fn execute<F>(&self, fun: F)
@@ -86,22 +83,33 @@ impl ThreadPool {
     }
 }
 
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        for worker in &mut self.workers {
+            if let Some(t) = worker.thread.take() {
+                println!("Shutting down worker with id {}", worker.id);
+                t.join().unwrap();
+            }
+        }
+    }
+}
+
 struct Worker {
-    _id: usize,
-    _thread: thread::JoinHandle<()>,
+    id: usize,
+    thread: Option<thread::JoinHandle<()>>,
 }
 
 impl Worker {
     fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
         return Worker {
-            _id: id,
-            _thread: thread::spawn(move || loop {
+            id: id,
+            thread: Some(thread::spawn(move || loop {
                 let job = receiver.lock().unwrap().recv().unwrap();
 
                 println!("Worker {} got a job; executing.", id);
 
                 job();
-            }),
+            })),
         };
     }
 }
